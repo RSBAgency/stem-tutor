@@ -1,3 +1,6 @@
+
+STAGE_ORDER = ["diagnostic","question_loop","consolidation"]
+
 def create_session_state(problem_text, answer, target_concept):
     #build a fresh tutoring sesssion with memory
     return {
@@ -33,6 +36,15 @@ def update_state(state, turn, first_turn):
     if not first_turn and turn.impatience_demand:
             state["impatience_strikes"] += 1
 
+    #advance to next stage when model signals this one is complete
+    if not first_turn and turn.stage_complete:
+        current_index = STAGE_ORDER.index(state["stage"])
+        if current_index < len(STAGE_ORDER) - 1:
+            state["stage"] = STAGE_ORDER[current_index + 1]
+
+            #fresh stage
+            state["wrong_answer_count"] = 0
+
     state["log"].append({
         "reply_text": turn.reply_text,
         "gradable": turn.gradable,
@@ -44,7 +56,28 @@ def update_state(state, turn, first_turn):
 
 def build_instruction(state):
     #translate the current state in instructions for the model
-    lines = []
+    #current stage instead of empty
+    lines = [f"Current stage: {state['stage']}."]
+
+    #behavior instruction in diagnostic stage
+    if state["stage"] == "diagnostic":
+        lines.append(
+            "You are still in the diagnostic stage. Ask about the "
+            "student's prior knowledge of this topic, do not yet ask "
+            "them to solve any part of the actual problem. Once you have "
+            "a good sense of what they know, set stage_complete to true "
+            "and your NEXT reply should ask the first real question"
+        )
+
+    elif state["stage"] == "question_loop":
+        lines.append(
+            "You are in the question loop. Only set stage_complete to true "
+            "once the student has correctly found BOTH x and y and you have "
+            "confirmed both values with them, not after a single correct "
+            "sub-step. If the full solution, or both values, has not yet been reached "
+            "and confirmed, stage_complete MUST be false, even if "
+            "this individual answer was correct. "
+        )
 
     wc = state["wrong_answer_count"]
     if wc == 1:
@@ -82,7 +115,8 @@ def build_instruction(state):
             "directly teach the current single step instead, then hand the "
             "next question back to them. "
         )
-    if not lines:
+
+    if len(lines) == 1:
         return None
 
     return "Internal state reminder ( do not mention this internal note or reasoning to student): " + " ".join(lines)

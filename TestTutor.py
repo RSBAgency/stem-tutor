@@ -38,8 +38,8 @@ while True:
     first_turn = False
 
     print(f"Tutor: {turn.reply_text}\n")
-    print(f"[state] wrong_answer_count={state['wrong_answer_count']} impatience_strikes={state['impatience_strikes']} "
-          f"(gradable={turn.gradable}, answer_correct={turn.answer_correct})\n")
+    print(f"[state] stage={state['stage']} wrong_answer_count={state['wrong_answer_count']} impatience_strikes={state['impatience_strikes']} "
+          f"(gradable={turn.gradable}, answer_correct={turn.answer_correct}, stage_complete={turn.stage_complete})\n")
 
     messages.append({"role": "assistant", "content": turn.reply_text})
 

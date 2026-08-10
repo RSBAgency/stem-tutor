@@ -5,3 +5,4 @@ class TutorTurn(BaseModel):
     gradable: bool
     answer_correct: bool
     impatience_demand: bool
+    stage_complete: bool
