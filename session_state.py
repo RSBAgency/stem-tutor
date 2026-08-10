@@ -2,7 +2,7 @@
 STAGE_ORDER = ["diagnostic","question_loop","consolidation"]
 
 def create_session_state(problem_text, answer, target_concept):
-    #build a fresh tutoring sesssion with memory
+    #build a fresh tutoring session with memory
     return {
         "stage": "diagnostic",
         "problem": {
@@ -59,6 +59,14 @@ def build_instruction(state):
     #current stage instead of empty
     lines = [f"Current stage: {state['stage']}."]
 
+
+    lines.append(
+        f"The problem is: {state['problem']['text']}. The verified correct "
+        f"answer is: {state['problem']['locked_answer']}. Use this exact "
+        f"answer to judge whether the student's response are correct - do "
+        f"not re-drive the answer yourself."
+    )
+
     #behavior instruction in diagnostic stage
     if state["stage"] == "diagnostic":
         lines.append(
@@ -69,14 +77,30 @@ def build_instruction(state):
             "and your NEXT reply should ask the first real question"
         )
 
+
     elif state["stage"] == "question_loop":
         lines.append(
             "You are in the question loop. Only set stage_complete to true "
-            "once the student has correctly found BOTH x and y and you have "
-            "confirmed both values with them, not after a single correct "
-            "sub-step. If the full solution, or both values, has not yet been reached "
-            "and confirmed, stage_complete MUST be false, even if "
-            "this individual answer was correct. "
+            "once the student has found and you have confirmed the COMPLETE "
+            "final answer to the problem, every value the problem asks for "
+            "(for example: both x and y in a system, or all roots of a quadratic, "
+            "or the single value in a linear equation), not after a single correct "
+            "sub step. If any part of the full answer is still missing or unconfirmed "
+            "stage_complete MUST be false, even if this individual answer was correct. "
+        )
+
+    elif state["stage"] == "consolidation":
+        lines.append(
+            "You are in the consolidation stage. Your job is to ask "
+            "the STUDENT to walk through the entire solution path themselves,"
+            "from the first step to the final answer, in their own words. "
+            "Do not summarize it for them and call that consolidation, you must "
+            "ask them to do it. Only set stage_complete to true once "
+            "the student has actually produced a full walkthrough covering "
+            "every step, not just confirmed the final numbers. If they "
+            "skip a step in their walkthrough, point at the gap with a "
+            "question rather than filling it in yourself, and keep "
+            "stage_complete false until they've addressed it."
         )
 
     wc = state["wrong_answer_count"]
