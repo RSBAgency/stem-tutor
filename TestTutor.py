@@ -2,7 +2,7 @@ import os
 from openai import OpenAI
 from tutor_prompt import SYSTEM_PROMPT
 from tutor_response import TutorTurn
-from session_state import create_session_state, update_state
+from session_state import create_session_state, update_state, build_instruction
 
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
@@ -21,9 +21,14 @@ messages.append({"role": "user", "content": "I need help solving 5x + 3y = 36 an
 first_turn = True
 
 while True:
+    instruction = build_instruction(state)
+    call_messages = messages if instruction is None else messages + [
+        {"role": "system", "content": instruction}
+    ]
+
     completion = client.chat.completions.parse(
         model="gpt-5-mini",
-        messages=messages,
+        messages=call_messages,
         response_format=TutorTurn,
     )
 
