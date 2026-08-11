@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from openai import OpenAI
 
 from tutor_prompt import SYSTEM_PROMPT
@@ -8,7 +8,12 @@ from session_state import create_session_state, update_state, build_instruction
 from problem_solver import solve_problem
 
 app = Flask(__name__)
+
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+@app.route("/")
+def home():
+    return render_template("index.html")
 
 #single session storage for local use
 
