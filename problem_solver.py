@@ -13,6 +13,9 @@ solve it. Calculus (derivatives, integrals, limits), problems with more unknowns
 equation with two variables, inequalities, and anything outside these three types must be marked solvable=false. Being 
 able to solve something is NOT enough to mark it solvable - it must also match one of these three exact types.
 
+Additionally, if a quadratic equation's discriminant (b^2 - 4ac) is negative, meaning the solutions would be complex or
+imaginary numbers, mark solvable=false. This solver only handles quadratics with real number solutions.
+
 Before answering, check yourself: does this problem have exactly one correct, fully determined answer or a clearly
 stated no solution/ infinite solution result for a single variable equation? If there are more unknowns than equations,
 or the topic isn't algebra, solvable MUST be false, even if you could technically produce a formula or a correct answer

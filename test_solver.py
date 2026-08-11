@@ -7,6 +7,7 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 test_problems = [
     "x + 1 = x + 2",
     "2x + 4 = 2(x + 2)",
+    "x^2 + 4 = 0",
     "4x = 6",
     "x^2 - 2 = 0",
     "3x + 2y = 12",
