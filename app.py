@@ -83,6 +83,11 @@ def reset_session():
     return jsonify({"ok": True})
 
 
+@app.route("/api/history", methods=["GET"])
+def get_history():
+    sessions = load_all_sessions()
+    return jsonify({"ok": True, "sessions": sessions})
+
 def _get_tutor_reply(state, messages, first_turn):
     instruction = build_instruction(state)
     call_messages = messages if instruction is None else messages + [

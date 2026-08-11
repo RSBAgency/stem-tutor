@@ -1,7 +1,6 @@
-cat > .gitignore << 'EOF'
 venv/
 __pycache__/
 *.pyc
 .idea/
 *.iml
-EOFsessions.json
+sessions.json
