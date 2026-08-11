@@ -6,6 +6,7 @@ from tutor_prompt import SYSTEM_PROMPT
 from tutor_response import TutorTurn
 from session_state import create_session_state, update_state, build_instruction
 from problem_solver import solve_problem
+from session_history import save_session, load_all_sessions
 
 app = Flask(__name__)
 
@@ -23,6 +24,7 @@ session = {
     "first_turn": True,
 
 }
+
 @app.route("/api/start", methods=["POST"])
 def start_session():
     data = request.get_json()
@@ -55,6 +57,7 @@ def start_session():
 
     return jsonify({"ok": True, "reply": tutor_reply})
 
+
 @app.route("/api/message", methods=["POST"])
 def continue_session():
     data = request.get_json()
@@ -68,6 +71,17 @@ def continue_session():
     tutor_reply, state = _get_tutor_reply(state, messages, first_turn=False)
     session["state"] = state
     return jsonify({"ok": True, "reply": tutor_reply, "stage": state["stage"]})
+
+
+@app.route("/api/reset", methods=["POST"])
+def reset_session():
+    save_session(session["state"], session["messages"])
+
+    session["state"] = None
+    session["messages"] = None
+    session["first_turn"] = True
+    return jsonify({"ok": True})
+
 
 def _get_tutor_reply(state, messages, first_turn):
     instruction = build_instruction(state)
@@ -86,6 +100,7 @@ def _get_tutor_reply(state, messages, first_turn):
     messages.append({"role": "assistant", "content": turn.reply_text})
 
     return turn.reply_text, state
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

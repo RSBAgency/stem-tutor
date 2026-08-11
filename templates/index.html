@@ -66,6 +66,10 @@
         <button onclick="sendMessage()">Send</button>
     </div>
 
+    <div id="reset-row" style="display: none; margin-top: 12px;">
+        <button onclick="resetSession()">New Problem</button>
+    </div>
+
     <script>
         async function startSession() {
             const problemText = document.getElementById("problem-input").value.trim();
@@ -93,6 +97,7 @@
             document.getElementById("setup").style.display = "none";
             document.getElementById("chat").style.display = "block";
             document.getElementById("input-row-chat").style.display = "flex";
+            document.getElementById("reset-row").style.display = "block";
 
             addMessage(data.reply, "tutor");
 
@@ -123,6 +128,22 @@
             input.disabled = false;
             document.querySelector("#input-row-chat button").disabled = false;
             input.focus();
+
+        }
+
+        async function resetSession() {
+            await fetch("/api/reset", { method: "POST" });
+
+            document.getElementById("chat").innerHTML = "";
+            document.getElementById("chat").style.display = "none";
+            document.getElementById("input-row-chat").style.display = "none";
+            document.getElementById("reset-row").style.display = "none";
+
+            document.getElementById("problem-input").value = "";
+            document.getElementById("problem-input").disabled = false;
+            document.querySelector("#input-row button").disabled = false;
+            document.querySelector("#input-row button").textContent = "Start";
+            document.getElementById("setup").style.display = "block";
 
         }
 
