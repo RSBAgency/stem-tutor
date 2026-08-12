@@ -1,4 +1,4 @@
-from tutor_response import ProblemSolution
+from tutor_response import ProblemSolution, TransferProblem
 # this module only focuses on correctness
 # it is separate from the tutor's logic and is never shown to the student
 # it is called once per problem before tutoring
@@ -47,3 +47,34 @@ def solve_problem(client, problem_text):
     )
     # parsed only when validated
     return completion.choices[0].message.parsed
+
+
+# generate a transfer check problem
+# passed through solve_problem()
+TRANSFER_GENERATOR_PROMPT = """You generate a single NEW practice problem that tests the SAME underlying concept as a
+given original problem, but it is NOT solvable by simply copying the original problem's steps with the same numbers. It
+must require applying the concept fresh.
+
+The new problem must be the SAME type as the original (linear equation, system of two equations, quadratic) just with
+different numbers or a different surface context.
+
+Return only the new problem's text, written in plain text, as something a student could type directly into this app to
+work on.
+"""
+
+
+# transfer problem generator
+def generate_transfer_problem(client, original_problem_text, target_concept):
+    completion = client.chat.completions.parse(
+        model="gpt-5-mini",
+        messages=[
+            {"role": "system", "content": TRANSFER_GENERATOR_PROMPT},
+            {"role": "user", "content": f"Original problem: {original_problem_text}\n" 
+                                        f"Concept being tested: {target_concept}"},
+        ],
+        response_format=TransferProblem,
+
+
+    )
+    return completion.choices[0].message.parsed.new_problem_text
+

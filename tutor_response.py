@@ -20,6 +20,7 @@ class TutorTurn(BaseModel):
     # has the current teaching stage fully finished
     stage_complete: bool
 
+
 # defines the shape the solver will return
 # one time call before conversation stage begins, determining the correct answer only
 class ProblemSolution(BaseModel):
@@ -33,3 +34,9 @@ class ProblemSolution(BaseModel):
     # the skill that is being highlighted in the conversation
     # empty string if not solvable
     target_concept: str
+
+
+# data returned from generate_transfer_problem()
+class TransferProblem(BaseModel):
+    new_problem_text: str
+
