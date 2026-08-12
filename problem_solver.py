@@ -1,4 +1,8 @@
 from tutor_response import ProblemSolution
+# this module only focuses on correctness
+# it is separate from the tutor's logic and is never shown to the student
+# it is called once per problem before tutoring
+# all rules were added as a response to a system failure found in testing
 
 SOLVER_SYSTEM_PROMPT = """You are a rigorous algebra solver, used internally to determine the correct answer to a
 problem before any tutoring begins. The student will NEVER see this response directly, it is only used internally to
@@ -29,13 +33,17 @@ otherwise.
 substitution"). Leave as an empty string if solvable is false.
 """
 
+
 def solve_problem(client, problem_text):
+    # called once per problem at the start of the session
     completion = client.chat.completions.parse(
         model="gpt-5-mini",
         messages=[
             {"role": "system", "content": SOLVER_SYSTEM_PROMPT},
             {"role": "user", "content": problem_text},
         ],
+        # response is return in ProblemSolution shape instead of text for reliability
         response_format=ProblemSolution
     )
+    # parsed only when validated
     return completion.choices[0].message.parsed

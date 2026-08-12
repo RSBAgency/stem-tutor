@@ -1,8 +1,12 @@
+# Three teaching stages in a fixed order
+# does not skip ahead or go backwards, cemented learning for the student
 
-STAGE_ORDER = ["diagnostic","question_loop","consolidation"]
+STAGE_ORDER = ["diagnostic", "question_loop", "completion"]
+
 
 def create_session_state(problem_text, answer, target_concept):
-    #build a fresh tutoring session with memory
+    # build a fresh tutoring session with memory
+    # only called once at the beginning stage of the conversation
     return {
         "stage": "diagnostic",
         "problem": {
@@ -10,6 +14,8 @@ def create_session_state(problem_text, answer, target_concept):
             "locked_answer": answer,
             "target_concept": target_concept,
         },
+
+        # reserved feature
         "plan": {
             "gap_identified": None,
             "misconceptions": [],
@@ -17,34 +23,64 @@ def create_session_state(problem_text, answer, target_concept):
         },
         "current_step_index": 0,
         "current_rung": 5,
+
+        # how many times the student has gotten the current stage question wrong
         "wrong_answer_count": 0,
+
+        # how many times the student has demanded the answer
         "impatience_strikes": 0,
+
+        # how many times a student has completed a walkthrough that was unaccepted
+        "completion_attempts": 0,
+
+        # true once session is finished and reach last stage
+        # without this completion will loop
+        "session_complete": False,
+
         "transfer_check": {
+            # reserved feature
             "attempted": False,
             "passed": None,
         },
+        # a running record of every turn
         "log": [],
     }
+
+
 def update_state(state, turn, first_turn):
-    #updates the state dictionary based on the structured fields the model just returned
+    # updates the state dictionary based on the structured fields the model just returned
+    # tracks the students struggle, and only mark wrong answers to gradable questions
+    #
     if not first_turn and turn.gradable:
         if turn.answer_correct:
+
+            # reset the wrong answer count
             state["wrong_answer_count"] = 0
         else:
+            # count wrong answer
             state["wrong_answer_count"] += 1
 
     if not first_turn and turn.impatience_demand:
-            state["impatience_strikes"] += 1
+        state["impatience_strikes"] += 1
 
-    #advance to next stage when model signals this one is complete
+    if not first_turn and state["stage"] == "completion":
+        if turn.stage_complete:
+            state["completion_attempts"] = 0
+        else:
+            state["completion_attempts"] += 1
+    # stops final asking loop
+    if not first_turn and turn.stage_complete and state["stage"] == STAGE_ORDER[-1]:
+        state["session_complete"] = True
+
+    # advance to next stage when model signals this one is complete
     if not first_turn and turn.stage_complete:
         current_index = STAGE_ORDER.index(state["stage"])
         if current_index < len(STAGE_ORDER) - 1:
             state["stage"] = STAGE_ORDER[current_index + 1]
 
-            #fresh stage
+            # fresh stage
             state["wrong_answer_count"] = 0
-
+    # logging
     state["log"].append({
         "reply_text": turn.reply_text,
         "gradable": turn.gradable,
@@ -54,12 +90,14 @@ def update_state(state, turn, first_turn):
 
     return state
 
+
 def build_instruction(state):
-    #translate the current state in instructions for the model
-    #current stage instead of empty
+
+    # translate the current state into instructions for the model, instead or rereading the conversation in whole
+    # current stage instead of empty
     lines = [f"Current stage: {state['stage']}."]
-
-
+    # inject the verified answer directly every turn
+    # testing fix, avoid AI changing the answer in the middle of a conversation
     lines.append(
         f"The problem is: {state['problem']['text']}. The verified correct "
         f"answer is: {state['problem']['locked_answer']}. Use this exact "
@@ -67,7 +105,7 @@ def build_instruction(state):
         f"not re-drive the answer yourself."
     )
 
-    #behavior instruction in diagnostic stage
+    # self check behavior instruction in diagnostic stage
     if state["stage"] == "diagnostic":
         lines.append(
             "You are still in the diagnostic stage. Ask about the "
@@ -77,8 +115,9 @@ def build_instruction(state):
             "and your NEXT reply should ask the first real question"
         )
 
-
     elif state["stage"] == "question_loop":
+        # testing fix, a more specified version broke after the system was tested on quadratics
+        # generalized wording is better suited for the question loop instead of structured return shapes
         lines.append(
             "You are in the question loop. Only set stage_complete to true "
             "once the student has found and you have confirmed the COMPLETE "
@@ -89,21 +128,61 @@ def build_instruction(state):
             "stage_complete MUST be false, even if this individual answer was correct. "
         )
 
-    elif state["stage"] == "consolidation":
-        lines.append(
-            "You are in the consolidation stage. Your job is to ask "
-            "the STUDENT to walk through the entire solution path themselves,"
-            "from the first step to the final answer, in their own words. "
-            "Do not summarize it for them and call that consolidation, you must "
-            "ask them to do it. Only set stage_complete to true once "
-            "the student has actually produced a full walkthrough covering "
-            "every step, not just confirmed the final numbers. If they "
-            "skip a step in their walkthrough, point at the gap with a "
-            "question rather than filling it in yourself, and keep "
-            "stage_complete false until they've addressed it."
-        )
+    elif state["stage"] == "completion":
+        # testing fix, the AI would say the problem was complete when the student did not solve the problem
+        # student must produce full reasoning for themselves
+        # testing fix: completion tiers added for partial completion - registering progress
+
+        if state["session_complete"]:
+            lines.append(
+                "The student has already fully completed this problem, "
+                "including a correct walkthrough. Do NOT ask them to "
+                "walk through the solution again or re-check it. "
+                "Respond naturally to whatever they say now or offer a new problem, "
+                "answer a question, or simply acknowledge them. "
+            )
+        else:
+            attempts = state["completion_attempts"]
+
+            if attempts == 0:  # first attempt walkthrough
+                lines.append(
+                    "You are in the completion stage. Your job is to ask "
+                    "the STUDENT to walk through the entire solution path themselves,"
+                    "from the first step to the final answer, in their own words. "
+                    "Do not summarize it for them and call that completion, you must "
+                    "ask them to do it. Only set stage_complete to true once "
+                    "the student has actually produced a full walkthrough covering "
+                    "every step, not just confirmed the final numbers."
+                )
+            elif attempts == 1:  # narrow missing information
+                lines.append(
+                    "The student has already attempted a full walkthrough once "
+                    "and it was missing something. Do NOT repeat the entire "
+                    "multi-part request again. Acknowledge specifically what they "
+                    "already got right then ask ONLY about the one specific piece that "
+                    "that is still missing or wrong. Name that piece directly. If your "
+                    "reply repeats the full checklist again instead of narrowing to the "
+                    "one missing piece, you have failed this instruction."
+                )
+            else:  # recognize effort
+                lines.append(
+                    "The student has now made multiple walkthrough attempts. If their"
+                    " explanation covers the correct operation and reaches the correct"
+                    "final answer, accept it as sufficient and set stage_complete to true, "
+                    "even if a minor detail, like a formal name of property, was missing or"
+                    "imperfect. Do NOT ask for a full walkthrough again. If your reply requests "
+                    "an entire multipart explanation again instead of either accepting it "
+                    "or naming just one remaining gap, you have failed this instruction. "
+                    "If the student still has not attempted the core reasoning at all "
+                    "briefly state the missing piece yourself, confirm they understand, "
+                    "and set stage_complete to true."
+
+                )
 
     wc = state["wrong_answer_count"]
+    # descent rule
+    # change of tactic and restructuring of question for better student understanding
+    # testing fix, the AI usually defaulted to giving a more obvious hint within the same question
     if wc == 1:
         lines.append(
             "The student has gotten the current step wrong once already. "
@@ -126,6 +205,7 @@ def build_instruction(state):
         )
 
     strikes = state["impatience_strikes"]
+    # impatience strikes, 3 strikes
     if strikes == 1:
         lines.append(
             "The student has already demanded the final answer once. If "
@@ -140,6 +220,8 @@ def build_instruction(state):
             "next question back to them. "
         )
 
+    # return none if the current stage line and answer line exist
+    # avoid extra instructions being added
     if len(lines) == 1:
         return None
 

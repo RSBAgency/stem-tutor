@@ -2,6 +2,8 @@ import os
 from openai import OpenAI
 from problem_solver import solve_problem
 
+# independent terminal testing for problem_solver.py
+
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 test_problems = [
@@ -22,3 +24,12 @@ for problem in test_problems:
     print(f"  locked_answer={result.locked_answer!r}")
     print(f"  target_concept={result.target_concept!r}")
     print()
+
+# Expected result:
+# solvable=True, no solution
+# solvable=True, infinite solutions
+# solvable=True, x = 3/2
+# solvable=True, x = +/- sqrt(2)
+# solvable=False, undetermined: two unknowns in one equation
+# solvable=True, 4 apples
+# solvable=False, out of scope

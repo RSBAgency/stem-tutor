@@ -1,13 +1,13 @@
 from session_state import create_session_state
 from session_history import save_session, load_all_sessions
 
-# simulate finished session
+# terminal testing for session_history.py
 state = create_session_state(
     problem_text="x^2 - x - 6 = 0",
     answer="x = 3 or x = -2",
     target_concept="solving quadratic equations by factoring",
 )
-state["stage"] = "consolidation"
+state["stage"] = "completion"
 
 messages = [
     {"role": "system", "content": "irrelevant prompt text"},
