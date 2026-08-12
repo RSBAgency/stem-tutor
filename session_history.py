@@ -21,6 +21,7 @@ def save_session(state, messages):
         "target_concept": state["problem"]["target_concept"],
         "final_stage": state["stage"],
         "messages": [m for m in messages if m["role"] != "system"],
+        "turn_log": state["log"],
     }
 
     # reads what is saved and add to new record

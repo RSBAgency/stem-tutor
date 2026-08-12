@@ -9,6 +9,16 @@ state = create_session_state(
 )
 state["stage"] = "completion"
 
+# permanent structured data test
+state["log"] = [
+    {"reply_text": "Before we start, what do you know about factoring",
+     "gradable": False, "answer_correct": None, "impatience_demand": False},
+    {"reply_text": "Not quite - check your signs. ",
+     "gradable": True, "answer_correct": False, "impatience_demand": False},
+    {"reply_text": "Correct that is the right factorization.",
+     "gradable": True, "answer_correct": True, "impatience_demand": False},
+]
+
 messages = [
     {"role": "system", "content": "irrelevant prompt text"},
     {"role": "user", "content": "I need help solving x^2 - x - 6 = 0"},
