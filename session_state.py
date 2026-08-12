@@ -1,7 +1,7 @@
 # Three teaching stages in a fixed order
 # does not skip ahead or go backwards, cemented learning for the student
 
-STAGE_ORDER = ["diagnostic", "question_loop", "completion"]
+STAGE_ORDER = ["diagnostic", "question_loop", "completion", "transfer_check"]
 
 
 def create_session_state(problem_text, answer, target_concept):
@@ -37,8 +37,15 @@ def create_session_state(problem_text, answer, target_concept):
         # without this completion will loop
         "session_complete": False,
 
+        # holds transfer problem once generated
+        "transfer_problem": {
+            "text": None,
+            "locked_answer": None,
+        },
+
+        # attempted is true on gradable answers
+        # passed is whether answer was correct
         "transfer_check": {
-            # reserved feature
             "attempted": False,
             "passed": None,
         },
@@ -50,7 +57,6 @@ def create_session_state(problem_text, answer, target_concept):
 def update_state(state, turn, first_turn):
     # updates the state dictionary based on the structured fields the model just returned
     # tracks the students struggle, and only mark wrong answers to gradable questions
-    #
     if not first_turn and turn.gradable:
         if turn.answer_correct:
 
@@ -68,6 +74,12 @@ def update_state(state, turn, first_turn):
             state["completion_attempts"] = 0
         else:
             state["completion_attempts"] += 1
+
+    # updates attempted or passed by last given answer
+    if not first_turn and state["stage"] == "transfer_check" and turn.gradable:
+        state["transfer_check"]["attempted"] = True
+        state["transfer_check"]["passed"] = turn.answer_correct
+
     # stops final asking loop
     if not first_turn and turn.stage_complete and state["stage"] == STAGE_ORDER[-1]:
         state["session_complete"] = True
@@ -178,31 +190,87 @@ def build_instruction(state):
                     "and set stage_complete to true."
 
                 )
+    # transfer check stage
+    # separate from question loop and checks a new generated problem
+    elif state["stage"] == "transfer_check":
+        if state["session_complete"]:
+            lines.append(
+                "This session has finished, including the transfer check or skipped "
+                "because transfer problem could not be verified. Do NOT ask another "
+                "question or request more work. Respond naturally and acknowledge the "
+                "student, offer a new problem, or wrap up the conversation."
 
-    wc = state["wrong_answer_count"]
-    # descent rule
-    # change of tactic and restructuring of question for better student understanding
-    # testing fix, the AI usually defaulted to giving a more obvious hint within the same question
-    if wc == 1:
-        lines.append(
-            "The student has gotten the current step wrong once already. "
-            "If their next answer is wrong again, this will be their 2nd "
-            "wrong attempt: you must acknowledge you're changing approach "
-            "and ask a NEW, differently structured question, not the same "
-            "question with a bigger hint. "
-        )
-    elif wc >= 2:
-        lines.append(
-            "The student has gotten the current step wrong two or more "
-            "times already. Your reply_text for this turn MUST be direct "
-            "teaching, not a question: explain the current single step in "
-            "full, state the operation and the result. Then confirm "
-            "understanding, then move to the NEXT step. Do not end your "
-            "reply_text with a question asking the student to solve this "
-            "same step again, if your reply asks the student to solve or "
-            "fill in this step themselves, you have failed this instruction "
-            "and must rewrite it as direct teaching instead"
-        )
+            )
+        else:
+            tp = state["transfer_problem"]
+            # reset to 0 wrong answers
+            wc = state["wrong_answer_count"]
+
+            lines.append(
+                f"TRANSFER CHECK: for this stage ONLY, the active problem the "
+                f"student should solve is: {tp['text']}. Its verified answer is: "
+                f"{tp['locked_answer']}. Use THIS answer, not the original "
+                f"problem's answer mentioned above, to judge correctness here. "
+                f"If your reply_text judges the student against the original "
+                f"problem's answer instead of this one, you have failed this instruction."
+
+            )
+
+            if wc == 0:
+                lines.append(
+                    "Present this transfer problem to the student and ask them "
+                    "to solve it with MINIMAL guidance, do not walk them through "
+                    "the full ladder of questions like in the main question loop. "
+                    "If they solve it correctly, briefly affirm and set stage_complete "
+                    "to true. If they decline or say they are done instead of attempting "
+                    "it, accep that gracefully and set stage_complete to true. Do not "
+                    "pressure the student to attempt it."
+                )
+            elif wc == 1:
+                lines.append(
+                    "The student already got this transfer problem wrong once. Give them "
+                    "ONE hint pointing at the underlying concept, not the answer or specific "
+                    "steps, and let them try once more. This is their FINAL attempt: after "
+                    "their next answer set stage_complete to true regardless of whether it was "
+                    "correct, do not ask again for a third time. If your reply asks for another "
+                    "attempt after this FINAL one, you have failed this instruction."
+                )
+            else:
+                lines.append(
+                    "The student has now gotten this transfer problem wrong two or more times "
+                    "including after already receiving a hint. Your reply_text for this turn "
+                    "MUST NOT ask them to try again. Acknowledge their effort, briefly state "
+                    "the correct answer, and you MUST set stage_complete to true on this "
+                    "turn. NO exceptions. If stage_complete is not true, or if your repl_text "
+                    "asks for another attempt, you have failed this instruction."
+                )
+
+    # descent rule only applies to main question loop
+    if state["stage"] != "transfer_check":
+        wc = state["wrong_answer_count"]
+        # descent rule
+        # change of tactic and restructuring of question for better student understanding
+        # testing fix, the AI usually defaulted to giving a more obvious hint within the same question
+        if wc == 1:
+            lines.append(
+                "The student has gotten the current step wrong once already. "
+                "If their next answer is wrong again, this will be their 2nd "
+                "wrong attempt: you must acknowledge you're changing approach "
+                "and ask a NEW, differently structured question, not the same "
+                "question with a bigger hint. "
+            )
+        elif wc >= 2:
+            lines.append(
+                "The student has gotten the current step wrong two or more "
+                "times already. Your reply_text for this turn MUST be direct "
+                "teaching, not a question: explain the current single step in "
+                "full, state the operation and the result. Then confirm "
+                "understanding, then move to the NEXT step. Do not end your "
+                "reply_text with a question asking the student to solve this "
+                "same step again, if your reply asks the student to solve or "
+                "fill in this step themselves, you have failed this instruction "
+                "and must rewrite it as direct teaching instead"
+            )
 
     strikes = state["impatience_strikes"]
     # impatience strikes, 3 strikes

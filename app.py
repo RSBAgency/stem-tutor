@@ -5,7 +5,7 @@ from openai import OpenAI
 from tutor_prompt import SYSTEM_PROMPT
 from tutor_response import TutorTurn
 from session_state import create_session_state, update_state, build_instruction
-from problem_solver import solve_problem
+from problem_solver import solve_problem, generate_transfer_problem
 from session_history import save_session, load_all_sessions
 
 app = Flask(__name__)
@@ -27,6 +27,7 @@ session = {
     "first_turn": True,
 
 }
+
 
 # student submits a new problem - entry point
 @app.route("/api/start", methods=["POST"])
@@ -102,6 +103,36 @@ def get_history():
     return jsonify({"ok": True, "sessions": sessions})
 
 
+# transfer problem after transfer check
+def attempt_transfer_problem(state):
+    if state["stage"] != "transfer_check":
+        return state
+
+    if state["transfer_problem"]["text"] is not None:
+        # already generated
+        return state
+
+    new_problem_text = generate_transfer_problem(
+        client,
+        state["problem"]["text"],
+        state["problem"]["target_concept"],
+
+    )
+
+    verification = solve_problem(client, new_problem_text)
+
+    if verification.solvable:
+        state["transfer_problem"]["text"] = new_problem_text
+        state["transfer_problem"]["locked_answer"] = verification.locked_answer
+
+        # catch unverifiable problem
+        # skip transfer check
+    else:
+        state["session_complete"] = True
+
+    return state
+
+
 # tutoring model for opening question and messages exchanged
 # current stage is changed into instructions
 def _get_tutor_reply(state, messages, first_turn):
@@ -121,6 +152,10 @@ def _get_tutor_reply(state, messages, first_turn):
     # permanent conversation history
     turn = completion.choices[0].message.parsed
     state = update_state(state, turn, first_turn)
+    state = attempt_transfer_problem(state)
+    # error check
+    print(f"[debug] stage={state['stage']} transfer_problem={state['transfer_problem']}"
+          f"wc={state['wrong_answer_count']} transfer_check={state['transfer_check']}")
     messages.append({"role": "assistant", "content": turn.reply_text})
 
     return turn.reply_text, state
