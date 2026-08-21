@@ -21,6 +21,7 @@ def create_session_state(problem_text, answer, target_concept):
             "misconceptions": [],
             "funnel_steps": [],
         },
+        # unused after wrong_answer_count was added
         "current_step_index": 0,
         "current_rung": 5,
 
@@ -203,7 +204,6 @@ def build_instruction(state):
             )
         else:
             tp = state["transfer_problem"]
-            # reset to 0 wrong answers
             wc = state["wrong_answer_count"]
 
             lines.append(
@@ -241,7 +241,7 @@ def build_instruction(state):
                     "including after already receiving a hint. Your reply_text for this turn "
                     "MUST NOT ask them to try again. Acknowledge their effort, briefly state "
                     "the correct answer, and you MUST set stage_complete to true on this "
-                    "turn. NO exceptions. If stage_complete is not true, or if your repl_text "
+                    "turn. NO exceptions. If stage_complete is not true, or if your reply_text "
                     "asks for another attempt, you have failed this instruction."
                 )
 

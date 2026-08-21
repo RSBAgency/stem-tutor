@@ -22,6 +22,9 @@ def save_session(state, messages):
         "final_stage": state["stage"],
         "messages": [m for m in messages if m["role"] != "system"],
         "turn_log": state["log"],
+
+        # testing transfer attempted or passed
+        "transfer_outcome": state["transfer_check"],
     }
 
     # reads what is saved and add to new record
