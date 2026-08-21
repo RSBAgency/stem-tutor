@@ -154,7 +154,9 @@ def _get_tutor_reply(state, messages, first_turn):
     state = update_state(state, turn, first_turn)
     state = attempt_transfer_problem(state)
     # error check
-    print(f"[debug] stage={state['stage']} transfer_problem={state['transfer_problem']}"
+    # including student message (!)
+    last_user_message = messages[-1]["content"] if messages and messages[-1]["role"] == "user" else "(first turn)"
+    print(f"[debug] user_said={last_user_message!r} stage={state['stage']} "
           f"wc={state['wrong_answer_count']} transfer_check={state['transfer_check']}")
     messages.append({"role": "assistant", "content": turn.reply_text})
 
