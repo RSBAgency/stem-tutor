@@ -1,14 +1,16 @@
 # Three teaching stages in a fixed order
 # does not skip ahead or go backwards, cemented learning for the student
-
+from datetime import datetime, timezone
 STAGE_ORDER = ["diagnostic", "question_loop", "completion", "transfer_check"]
 
 
 def create_session_state(problem_text, answer, target_concept):
     # build a fresh tutoring session with memory
     # only called once at the beginning stage of the conversation
+    # track time the moment a session begins
     return {
         "stage": "diagnostic",
+        "started": datetime.now(timezone.utc).isoformat(),
         "problem": {
             "text": problem_text,
             "locked_answer": answer,

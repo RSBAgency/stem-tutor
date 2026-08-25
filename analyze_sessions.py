@@ -28,6 +28,7 @@ def teaching_fallback(session):
                 consecutive_wrong = 0
     return False
 
+
 fallback_sessions = [s for s in sessions if teaching_fallback(s)]
 print(f"Required teaching fallback (2+ wrong in a row): {len(fallback_sessions)}/{total} "
       f"({100 * len(fallback_sessions) / total:.0f}%)")

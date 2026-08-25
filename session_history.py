@@ -17,6 +17,7 @@ def save_session(state, messages):
         # how far a session got
         # reorganize system messages before saving
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "started": state["started"],
         "problem_text": state["problem"]["text"],
         "target_concept": state["problem"]["target_concept"],
         "final_stage": state["stage"],
