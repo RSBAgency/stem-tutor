@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 # defines the data the tutor will return utilizing a Pydantic model instead of plain text
 
+
 class TutorTurn(BaseModel):
     # the message shown to the student
     reply_text: str

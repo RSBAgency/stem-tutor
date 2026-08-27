@@ -14,6 +14,7 @@ completed = [s for s in sessions if s["final_stage"] == "transfer_check"]
 print(f"Reached transfer_check (final stage): {len(completed)}/{total} "
       f"({100 * len(completed) / total:.0f}%)")
 
+
 # teaching fallback rate for the descent rule direct teach step
 def teaching_fallback(session):
     consecutive_wrong = 0
